@@ -6,8 +6,8 @@ import childrenImage from '../assets/children.jpg';
 const Home = () => {
   const navigate = useNavigate();
 
-  const handleNavigateToTestPage = () => {
-    navigate('/testpage1');
+  const handleNavigateToGame = (path) => {
+    navigate(path);
   };
 
   return (
@@ -63,12 +63,26 @@ const Home = () => {
           </div>
         </div>
 
-        <button 
-          className="bg-blue-500 text-white py-2 px-4 rounded shadow-md hover:bg-blue-600 mt-4"
-          onClick={handleNavigateToTestPage}
-        >
-          Go to Test Page 1
-        </button>
+        <div className="flex flex-col items-center space-y-4 mt-8">
+          <button 
+            className="bg-blue-500 text-white py-2 px-4 rounded shadow-md hover:bg-blue-600"
+            onClick={() => handleNavigateToGame('/game1')}
+          >
+            3 Years
+          </button>
+          <button 
+            className="bg-green-500 text-white py-2 px-4 rounded shadow-md hover:bg-green-600"
+            onClick={() => handleNavigateToGame('/game2')}
+          >
+            4 Years
+          </button>
+          <button 
+            className="bg-red-500 text-white py-2 px-4 rounded shadow-md hover:bg-red-600"
+            onClick={() => handleNavigateToGame('/game3')}
+          >
+            5 Years
+          </button>
+        </div>
       </div>
     </div>
   );
