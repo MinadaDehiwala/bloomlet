@@ -30,11 +30,14 @@ const Home = () => {
         } catch (error) {
           console.error("Error fetching child data:", error);
         }
+      } else {
+        console.error("No childID found, navigating to add child data");
+        navigate('/addchilddata');
       }
     };
 
     fetchChildData();
-  }, [childID]);
+  }, [childID, navigate]);
 
   const handleNavigateToGame = (path) => {
     navigate(path);
