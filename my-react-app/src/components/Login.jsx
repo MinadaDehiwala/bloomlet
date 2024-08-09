@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Swal from 'sweetalert2';
+import Cookies from 'js-cookie';
 
 const Login = () => {
   const emailRef = useRef();
@@ -8,7 +10,6 @@ const Login = () => {
   const { login } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
@@ -22,12 +23,32 @@ const Login = () => {
     try {
       setError('');
       setLoading(true);
-      await login(emailRef.current.value, passwordRef.current.value);
-      setShowPopup(true);
+      const userCredential = await login(emailRef.current.value, passwordRef.current.value);
+      const user = userCredential.user;
+      console.log('User object:', user);
+      if (user && user.uid) {
+        Cookies.set('userID', user.uid, { expires: 7 }); // Store userID in cookies for 7 days
+        Swal.fire({
+          title: 'Login Successful',
+          text: 'You have successfully logged in.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      } else {
+        throw new Error('User ID not found in the response');
+      }
     } catch (error) {
-      setError('Password is Waradi bola! ');
-      setShowPopup(true);
-      console.log(error.message)
+      setError(`Login failed: ${error.message}`);
+      Swal.fire({
+        title: 'Login Failed',
+        text: error.message,
+        icon: 'error',
+        showConfirmButton: true,
+      });
     }
 
     setLoading(false);
@@ -123,36 +144,6 @@ const Login = () => {
           </div>
         </div>
       </div>
-
-      {showPopup && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="my-modal">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">{error ? 'Login Failed' : 'Login Successful'}</h3>
-              <div className="mt-2 px-7 py-3">
-                <p className="text-sm text-gray-500">
-                  {error ? error : 'You have successfully logged in.'}
-                </p>
-              </div>
-              <div className="items-center px-4 py-3">
-                <button
-                  id="ok-btn"
-                  className="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  onClick={() => {
-                    if (!error) {
-                      navigate('/userdashboard');
-                    } else {
-                      setShowPopup(false);
-                    }
-                  }}
-                >
-                  {error ? 'Try Again' : 'Go to Dashboard'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -4,6 +4,9 @@ import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import Confetti from 'react-confetti';
 import { Container, Box, Typography, Button, Grid, Paper } from '@mui/material';
+import { db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import Cookies from 'js-cookie';
 import AddIcon from '@mui/icons-material/Add';
 import QuestionMarkIcon from '@mui/icons-material/HelpOutline';
 
@@ -40,11 +43,15 @@ const levels = [
 const Game3 = () => {
   const [currentLevel, setCurrentLevel] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [correctAnswers, setCorrectAnswers] = useState(0);
   const navigate = useNavigate();
+
+  const childId = Cookies.get('childID');  // Assume childID is stored in cookies
 
   const checkAnswer = (answer) => {
     if (answer === levels[currentLevel].correct) {
       setShowConfetti(true);
+      setCorrectAnswers(correctAnswers + 1);
       MySwal.fire({
         title: 'Correct!',
         text: 'You chose the right answer!',
@@ -55,17 +62,56 @@ const Game3 = () => {
         if (currentLevel < levels.length - 1) {
           setCurrentLevel(currentLevel + 1);
         } else {
-          navigate('/');
+          const totalQuestions = levels.length;
+          const percentage = (correctAnswers / totalQuestions) * 100;
+          updateChildScoreAndIntelligence(childId, percentage);
         }
       });
     } else {
       MySwal.fire({
         title: 'Wrong!',
-        text: 'Try again!',
+        text: 'Moving to the next level.',
         icon: 'error',
-        confirmButtonText: 'Okay',
+        confirmButtonText: 'Next Level',
+      }).then(() => {
+        if (currentLevel < levels.length - 1) {
+          setCurrentLevel(currentLevel + 1);
+        } else {
+          const totalQuestions = levels.length;
+          const percentage = (correctAnswers / totalQuestions) * 100;
+          updateChildScoreAndIntelligence(childId, percentage);
+        }
       });
     }
+  };
+
+  const updateChildScoreAndIntelligence = async (childId, percentage) => {
+    try {
+      const intelligenceScore = calculateIntelligenceScore(percentage);
+
+      const childRef = doc(db, 'childrenData', childId);
+
+      // Use setDoc with merge: true to create or update the document
+      await setDoc(childRef, {
+        score: percentage,
+        intelligence: intelligenceScore,
+      }, { merge: true });
+
+      MySwal.fire({
+        title: 'Game Over!',
+        text: `Your intelligence percentage is ${intelligenceScore.toFixed(2)}%`,
+        icon: 'success',
+        confirmButtonText: 'Okay',
+      }).then(() => {
+        navigate('/');
+      });
+    } catch (error) {
+      console.error('Error updating document: ', error);
+    }
+  };
+
+  const calculateIntelligenceScore = (percentage) => {
+    return percentage; // Adjust this to be more sophisticated if required
   };
 
   return (

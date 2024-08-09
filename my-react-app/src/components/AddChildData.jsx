@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { db } from '../firebase';
+import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import Cookies from 'js-cookie';
 
 const AddChildData = () => {
   const [childData, setChildData] = useState({
@@ -9,10 +12,29 @@ const AddChildData = () => {
     height: '',
     avgDailyScreenTime: '',
     appsUsed: [],
-    platformsUsed: []
+    platformsUsed: [],
+    score: '' // Initialize score field
   });
   const [errors, setErrors] = useState({});
+  const [childExists, setChildExists] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkChildExists = async () => {
+      const userId = Cookies.get('userID');
+      if (userId) {
+        const q = query(collection(db, 'childrenData'), where('userId', '==', userId));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          setChildExists(true);
+          const childDoc = querySnapshot.docs[0];
+          Cookies.set('childID', childDoc.id);
+        }
+      }
+    };
+
+    checkChildExists();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,17 +63,30 @@ const AddChildData = () => {
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
-      // Submit child data to backend or handle it as needed
-      console.log(childData);
-      navigate('/');
+      try {
+        const userId = Cookies.get('userID');
+        const docRef = await addDoc(collection(db, 'childrenData'), {
+          ...childData,
+          userId: userId
+        });
+        Cookies.set('childID', docRef.id);
+        console.log('Child data saved:', childData);
+        navigate('/');
+      } catch (error) {
+        console.error('Error adding document: ', error);
+      }
     }
   };
 
   const apps = ['YouTube', 'TikTok', 'YouTube Kids', 'Netflix', 'Games', 'Educational Apps'];
   const platforms = ['TV', 'Computer', 'Tablet', 'Mobile'];
+
+  if (childExists) {
+    return <div>You already have a child added.</div>;
+  }
 
   return (
     <div className="container mx-auto p-6 bg-white min-h-screen">
@@ -89,7 +124,7 @@ const AddChildData = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded bg-white text-black"
           />
-          {errors.weight && <span className="text-red-500">{errors.weight}</span>}
+          {errors.weight && <span class="text-red-500">{errors.weight}</span>}
         </div>
         <div className="mb-4">
           <label className="block text-gray-700">Height (cm)</label>
@@ -100,7 +135,7 @@ const AddChildData = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded bg-white text-black"
           />
-          {errors.height && <span className="text-red-500">{errors.height}</span>}
+          {errors.height && <span class="text-red-500">{errors.height}</span>}
         </div>
         <div className="mb-4">
           <label className="block text-gray-700">Average Daily Screen Time (hours)</label>
@@ -111,7 +146,7 @@ const AddChildData = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded bg-white text-black"
           />
-          {errors.avgDailyScreenTime && <span className="text-red-500">{errors.avgDailyScreenTime}</span>}
+          {errors.avgDailyScreenTime && <span class="text-red-500">{errors.avgDailyScreenTime}</span>}
         </div>
         <div className="mb-4">
           <label className="block text-gray-700 mb-2">Apps Used</label>
