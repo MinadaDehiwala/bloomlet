@@ -7,7 +7,7 @@ import Cookies from 'js-cookie';
 const Login = () => {
   const emailRef = useRef();
   const passwordRef = useRef();
-  const { login } = useAuth();
+  const { login } = useAuth();  // Ensure login function is correctly imported
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
