@@ -36,7 +36,7 @@ const Login = () => {
           showConfirmButton: false,
         });
         setTimeout(() => {
-          navigate('/');
+          navigate('/addchilddata'); // Redirect to /addchilddata after login
         }, 2000);
       } else {
         throw new Error('User ID not found in the response');
@@ -64,6 +64,7 @@ const Login = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {error && <div className="mb-4 text-red-500 text-center">{error}</div>}
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">

@@ -1,8 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 const Signup = () => {
+  const firstNameRef = useRef();
+  const lastNameRef = useRef();
   const emailRef = useRef();
   const passwordRef = useRef();
   const passwordConfirmRef = useRef();
@@ -15,7 +19,7 @@ const Signup = () => {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!emailRef.current.value || !passwordRef.current.value || !passwordConfirmRef.current.value) {
+    if (!firstNameRef.current.value || !lastNameRef.current.value || !emailRef.current.value || !passwordRef.current.value || !passwordConfirmRef.current.value) {
       return setError('Please fill in all fields');
     }
 
@@ -30,7 +34,16 @@ const Signup = () => {
     try {
       setError('');
       setLoading(true);
-      await signup(emailRef.current.value, passwordRef.current.value);
+      const userCredential = await signup(emailRef.current.value, passwordRef.current.value);
+      const user = userCredential.user;
+
+      // Save user details to Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        firstName: firstNameRef.current.value,
+        lastName: lastNameRef.current.value,
+        email: emailRef.current.value,
+      });
+
       setShowPopup(true);
     } catch (error) {
       setError('Failed to create an account: ' + error.message);
@@ -51,6 +64,38 @@ const Signup = () => {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {error && <div className="mb-4 text-red-500 text-center">{error}</div>}
           <form className="space-y-6" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="first-name" className="block text-sm font-medium text-gray-700">
+                First Name
+              </label>
+              <div className="mt-1">
+                <input
+                  id="first-name"
+                  name="first-name"
+                  type="text"
+                  required
+                  ref={firstNameRef}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white text-black"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="last-name" className="block text-sm font-medium text-gray-700">
+                Last Name
+              </label>
+              <div className="mt-1">
+                <input
+                  id="last-name"
+                  name="last-name"
+                  type="text"
+                  required
+                  ref={lastNameRef}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white text-black"
+                />
+              </div>
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address

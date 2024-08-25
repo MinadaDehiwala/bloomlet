@@ -5,10 +5,11 @@ import withReactContent from 'sweetalert2-react-content';
 import Confetti from 'react-confetti';
 import { Container, Box, Typography, Button, Grid, Paper } from '@mui/material';
 import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import Cookies from 'js-cookie';
 import AddIcon from '@mui/icons-material/Add';
 import QuestionMarkIcon from '@mui/icons-material/HelpOutline';
+import { useAuth } from '../contexts/AuthContext';
 
 const MySwal = withReactContent(Swal);
 
@@ -45,6 +46,7 @@ const Game3 = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Get current user
 
   const childId = Cookies.get('childID');  // Assume childID is stored in cookies
 
@@ -65,6 +67,7 @@ const Game3 = () => {
           const totalQuestions = levels.length;
           const percentage = (correctAnswers / totalQuestions) * 100;
           updateChildScoreAndIntelligence(childId, percentage);
+          saveGameHistory(percentage); // Save game history
         }
       });
     } else {
@@ -80,6 +83,7 @@ const Game3 = () => {
           const totalQuestions = levels.length;
           const percentage = (correctAnswers / totalQuestions) * 100;
           updateChildScoreAndIntelligence(childId, percentage);
+          saveGameHistory(percentage); // Save game history
         }
       });
     }
@@ -112,6 +116,20 @@ const Game3 = () => {
 
   const calculateIntelligenceScore = (percentage) => {
     return percentage; // Adjust this to be more sophisticated if required
+  };
+
+  const saveGameHistory = async (score) => {
+    try {
+      await addDoc(collection(db, 'gameHistory'), {
+        userID: currentUser.uid,
+        gameType: 'Game 3',
+        score: Math.round(score), // Save the score rounded to the nearest whole number
+        datePlayed: serverTimestamp(),
+      });
+      console.log('Game history saved successfully');
+    } catch (error) {
+      console.error('Error saving game history:', error);
+    }
   };
 
   return (

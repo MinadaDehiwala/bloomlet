@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, createContext } from 'react';
-import { auth, signInWithEmailAndPassword } from '../firebase';
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 const AuthContext = createContext();
@@ -21,14 +21,18 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  // Ensure that the login function is provided in the context
   const login = (email, password) => {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signup = (email, password) => {
+    return createUserWithEmailAndPassword(auth, email, password);
+  };
+
   const value = {
     currentUser,
-    login,  // Add login function to the context value
+    login,
+    signup, // Add signup function to the context value
   };
 
   return (

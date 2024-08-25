@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import Confetti from 'react-confetti';
 import { Container, Box, Typography, Button, Grid, Paper } from '@mui/material';
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import Cookies from 'js-cookie';
 import appleImage from '../assets/apple.png';
 import ballImage from '../assets/ball.png';
@@ -14,6 +13,7 @@ import bookImage from '../assets/book.png';
 import carImage from '../assets/car.png';
 import catImage from '../assets/cat.png';
 import dogImage from '../assets/dog.png';
+import { useAuth } from '../contexts/AuthContext';
 
 const MySwal = withReactContent(Swal);
 
@@ -89,6 +89,7 @@ const Game1 = () => {
   const [totalScore, setTotalScore] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
   const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Get current user
 
   const userId = Cookies.get('userID');
   const childId = Cookies.get('childID');
@@ -148,6 +149,7 @@ const Game1 = () => {
     const intelligencePercentage = (totalScore / (levels.length * 100)) * 100;
     const intelligenceCategory = categorizeIntelligence(intelligencePercentage);
     updateChildScore(childId, intelligencePercentage, intelligenceCategory);
+    saveGameHistory(intelligencePercentage); // Save game history
   };
 
   const categorizeIntelligence = (percentage) => {
@@ -175,6 +177,20 @@ const Game1 = () => {
       });
     } catch (error) {
       console.error('Error updating document: ', error);
+    }
+  };
+
+  const saveGameHistory = async (score) => {
+    try {
+      await addDoc(collection(db, 'gameHistory'), {
+        userID: currentUser.uid,
+        gameType: 'Game 1',
+        score: Math.round(score), // Save the score rounded to the nearest whole number
+        datePlayed: serverTimestamp(),
+      });
+      console.log('Game history saved successfully');
+    } catch (error) {
+      console.error('Error saving game history:', error);
     }
   };
 
