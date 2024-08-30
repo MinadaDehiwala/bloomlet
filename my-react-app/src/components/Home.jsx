@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FaUsers } from 'react-icons/fa';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // <-- Make sure Link is imported here
 import Cookies from 'js-cookie';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -66,35 +65,27 @@ const Home = () => {
       }
     };
 
-    checkForChildID();
-  }, [navigate]);
+    if (currentUser) {
+      checkForChildID();
+    }
+  }, [currentUser, navigate]);
 
   const handleLogout = async () => {
     try {
       await logout();
+      Cookies.remove('userID'); // Remove the userID cookie on logout
       navigate('/login'); // Redirect to login after logout
     } catch (error) {
       console.error('Failed to logout:', error);
     }
   };
 
-  const handleNavigateToImprove = () => {
-    navigate('/improve');
+  const handleNavigateToGame = (path) => {
+    navigate(path);
   };
 
-  const handleNavigateToGame = () => {
-    if (childData) {
-      const age = childData.age;
-      let gamePath = '/game1'; // Default to Game 1
-
-      if (age === 4) {
-        gamePath = '/game2';
-      } else if (age === 5) {
-        gamePath = '/game3';
-      }
-
-      navigate(gamePath);
-    }
+  const handleNavigateToImprove = () => {
+    navigate('/improve');
   };
 
   return (
@@ -193,16 +184,36 @@ const Home = () => {
           </div>
         )}
 
-        {/* Game Button Section */}
+        {/* Game Buttons Section */}
         <h2 className="text-2xl font-semibold text-gray-700 mt-12 mb-6">Test Your Brain!</h2>
-        <div className="flex justify-center">
-          <button
-            className="bg-blue-500 text-white py-2 px-4 rounded shadow-md hover:bg-blue-600 transition duration-200"
-            onClick={handleNavigateToGame}
-          >
-            Start Game
-          </button>
-        </div>
+        {childData && (
+          <div className="flex justify-center space-x-4">
+            {childData.age >= 3 && (
+              <button
+                className="bg-blue-500 text-white py-2 px-4 rounded shadow-md hover:bg-blue-600 transition duration-200"
+                onClick={() => handleNavigateToGame('/game1')}
+              >
+                3 Years
+              </button>
+            )}
+            {childData.age >= 4 && (
+              <button
+                className="bg-green-500 text-white py-2 px-4 rounded shadow-md hover:bg-green-600 transition duration-200"
+                onClick={() => handleNavigateToGame('/game2')}
+              >
+                4 Years
+              </button>
+            )}
+            {childData.age >= 5 && (
+              <button
+                className="bg-red-500 text-white py-2 px-4 rounded shadow-md hover:bg-red-600 transition duration-200"
+                onClick={() => handleNavigateToGame('/game3')}
+              >
+                5 Years
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
