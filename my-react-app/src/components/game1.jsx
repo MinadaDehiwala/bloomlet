@@ -13,21 +13,26 @@ import bookImage from '../assets/book.png';
 import carImage from '../assets/car.png';
 import catImage from '../assets/cat.png';
 import dogImage from '../assets/dog.png';
+import redColor from '../assets/red.png';
+import blueColor from '../assets/blue.png';
+import greenColor from '../assets/green.png';
 import { useAuth } from '../contexts/AuthContext';
 
 const MySwal = withReactContent(Swal);
 
 const levels = [
   {
+    type: 'image',
     image: appleImage,
     options: ['Apple', 'Banana', 'Car'],
     correct: 'Apple',
     wrongAnswerPenalties: {
-      'Banana': 10,  // Slightly wrong
-      'Car': 20,     // More wrong
+      'Banana': 10,
+      'Car': 20,
     }
   },
   {
+    type: 'image',
     image: ballImage,
     options: ['Dog', 'Ball', 'Cat'],
     correct: 'Ball',
@@ -37,6 +42,17 @@ const levels = [
     }
   },
   {
+    type: 'color',
+    image: redColor,
+    options: ['Red', 'Blue', 'Green'],
+    correct: 'Red',
+    wrongAnswerPenalties: {
+      'Blue': 20,
+      'Green': 15,
+    }
+  },
+  {
+    type: 'image',
     image: bananaImage,
     options: ['Book', 'Apple', 'Banana'],
     correct: 'Banana',
@@ -46,6 +62,17 @@ const levels = [
     }
   },
   {
+    type: 'color',
+    image: blueColor,
+    options: ['Red', 'Blue', 'Green'],
+    correct: 'Blue',
+    wrongAnswerPenalties: {
+      'Red': 20,
+      'Green': 15,
+    }
+  },
+  {
+    type: 'image',
     image: bookImage,
     options: ['Car', 'Book', 'Ball'],
     correct: 'Book',
@@ -55,6 +82,17 @@ const levels = [
     }
   },
   {
+    type: 'color',
+    image: greenColor,
+    options: ['Green', 'Blue', 'Red'],
+    correct: 'Green',
+    wrongAnswerPenalties: {
+      'Blue': 20,
+      'Red': 15,
+    }
+  },
+  {
+    type: 'image',
     image: carImage,
     options: ['Cat', 'Dog', 'Car'],
     correct: 'Car',
@@ -64,6 +102,7 @@ const levels = [
     }
   },
   {
+    type: 'image',
     image: catImage,
     options: ['Cat', 'Ball', 'Dog'],
     correct: 'Cat',
@@ -73,6 +112,7 @@ const levels = [
     }
   },
   {
+    type: 'image',
     image: dogImage,
     options: ['Apple', 'Dog', 'Banana'],
     correct: 'Dog',
@@ -86,7 +126,8 @@ const levels = [
 const Game1 = () => {
   const [currentLevel, setCurrentLevel] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
-  const [totalScore, setTotalScore] = useState(0);
+  const [imageRecognitionScore, setImageRecognitionScore] = useState(0);
+  const [colorIdentificationScore, setColorIdentificationScore] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
   const navigate = useNavigate();
   const { currentUser } = useAuth(); // Get current user
@@ -109,23 +150,25 @@ const Game1 = () => {
     let score = 0;
 
     if (answer === levels[currentLevel].correct) {
-      // Base score for correct answer
-      score = 100;
+      score = 10; // 10 points for correct answer
 
-      // Time-based scoring adjustments
+      // Adjust score based on response time
       if (timeTaken <= 3) {
-        score += 20; // Fast response
+        score += 2; // Fast response bonus
       } else if (timeTaken > 10) {
-        score -= 20; // Slow response
+        score -= 2; // Slow response penalty
       }
 
       setCorrectAnswers((prev) => prev + 1);
     } else {
-      // Wrong answer penalties
       score -= levels[currentLevel].wrongAnswerPenalties[answer] || 0;
     }
 
-    setTotalScore((prev) => prev + score);
+    if (levels[currentLevel].type === 'image') {
+      setImageRecognitionScore((prev) => prev + score);
+    } else if (levels[currentLevel].type === 'color') {
+      setColorIdentificationScore((prev) => prev + score);
+    }
 
     MySwal.fire({
       title: answer === levels[currentLevel].correct ? 'Correct!' : 'Wrong!',
@@ -146,30 +189,26 @@ const Game1 = () => {
   };
 
   const finalizeScore = () => {
-    const intelligencePercentage = (totalScore / (levels.length * 100)) * 100;
-    const intelligenceCategory = categorizeIntelligence(intelligencePercentage);
-    updateChildScore(childId, intelligencePercentage, intelligenceCategory);
+    const totalScore = imageRecognitionScore + colorIdentificationScore;
+    const intelligencePercentage = (totalScore / (levels.length * 10)) * 100;
+
+    updateChildScores(childId, intelligencePercentage, imageRecognitionScore, colorIdentificationScore);
     saveGameHistory(intelligencePercentage); // Save game history
   };
 
-  const categorizeIntelligence = (percentage) => {
-    if (percentage >= 85) return 'Above Average';
-    if (percentage >= 70) return 'Average';
-    return 'Below Average';
-  };
-
-  const updateChildScore = async (childId, percentage, category) => {
+  const updateChildScores = async (childId, totalScore, imageScore, colorScore) => {
     try {
       const childRef = doc(db, 'childrenData', childId);
 
       await updateDoc(childRef, {
-        score: percentage,
-        intelligenceCategory: category
+        score: totalScore,
+        imageRecognition: imageScore,
+        colorIdentification: colorScore
       });
 
       MySwal.fire({
         title: 'Game Over!',
-        text: `Your intelligence percentage is ${percentage.toFixed(2)}%. Category: ${category}`,
+        text: `Your total intelligence score is ${totalScore.toFixed(2)}%.`,
         icon: 'success',
         confirmButtonText: 'Okay',
       }).then(() => {

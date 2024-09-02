@@ -79,7 +79,7 @@ const Stats = () => {
     <Box sx={{ padding: 3 }}>
       {/* Top Navigation Bar */}
       <div className="topnav bg-blue-600 w-full flex justify-around p-4 shadow-lg">
-        <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">LOGO</a>
+        <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">Bloomlet</a>
         <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/userdashboard">Progress</a>
         <button
           onClick={handleLogout}

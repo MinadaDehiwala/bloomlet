@@ -1,7 +1,58 @@
-import React from 'react';
-import { FaUser, FaTasks, FaInfoCircle, FaSignOutAlt } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { FaUser, FaSignOutAlt } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
+import Cookies from 'js-cookie'; // Import Cookies
 
 const UserDashboard = () => {
+  const { currentUser } = useAuth();
+  const [userData, setUserData] = useState(null);
+  const [childData, setChildData] = useState(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (currentUser) {
+        const userDoc = doc(db, 'users', currentUser.uid);
+        const docSnap = await getDoc(userDoc);
+        if (docSnap.exists()) {
+          setUserData(docSnap.data());
+        } else {
+          console.log("No such document!");
+        }
+      }
+    };
+
+    const fetchChildData = async () => {
+      const childID = Cookies.get('childID');
+      if (childID) {
+        const childDoc = doc(db, 'childrenData', childID);
+        const docSnap = await getDoc(childDoc);
+        if (docSnap.exists()) {
+          setChildData(docSnap.data());
+        } else {
+          console.log("No child data found!");
+        }
+      }
+    };
+
+    fetchUserData();
+    fetchChildData();
+  }, [currentUser]);
+
+  if (!userData || !childData) {
+    return <div>Loading...</div>;
+  }
+
+  const scores = [
+    { name: 'Mathematics', score: childData.mathScore },
+    { name: 'Color Identification', score: childData.colorIdentificationScore },
+    { name: 'Counting', score: childData.countingScore },
+    { name: 'Image Recognition', score: childData.imageRecognition },
+    { name: 'Overall Intelligence', score: childData.intelligence },
+  ];
+
   return (
     <div className="bg-gray-100 min-h-screen flex">
       {/* Sidebar */}
@@ -11,22 +62,10 @@ const UserDashboard = () => {
           <nav>
             <ul>
               <li className="mb-4">
-                <a className="flex items-center text-gray-700 hover:text-blue-600 transition duration-200" href="#">
+                <Link to="/profile" className="flex items-center text-gray-700 hover:text-blue-600 transition duration-200">
                   <FaUser className="mr-2" />
                   User Profile
-                </a>
-              </li>
-              <li className="mb-4">
-                <a className="flex items-center text-gray-700 hover:text-blue-600 transition duration-200" href="#">
-                  <FaTasks className="mr-2" />
-                  Activities
-                </a>
-              </li>
-              <li className="mb-4">
-                <a className="flex items-center text-gray-700 hover:text-blue-600 transition duration-200" href="#">
-                  <FaInfoCircle className="mr-2" />
-                  Children Information
-                </a>
+                </Link>
               </li>
             </ul>
           </nav>
@@ -43,23 +82,16 @@ const UserDashboard = () => {
       <div className="flex-grow p-6">
         <div className="bg-white p-8 rounded-lg shadow-lg">
           <h1 className="text-3xl font-bold mb-4">Your Child Development Results</h1>
-          <h2 className="text-xl mb-2">Amor Floriana</h2>
+          <h2 className="text-xl mb-2">{userData.firstName} {userData.lastName}</h2>
           <p className="text-gray-700 mb-4">3 years old</p>
           <div className="space-y-4">
-            {[
-              'Brain',
-              'Language',
-              'Speaking',
-              'Color Identification',
-              'Physical Activity',
-              'Sports',
-            ].map((item) => (
-              <div key={item} className="flex items-center justify-between">
-                <span className="text-gray-700">{item}</span>
+            {scores.map((item) => (
+              <div key={item.name} className="flex items-center justify-between">
+                <span className="text-gray-700">{item.name}</span>
                 <div className="w-full bg-gray-200 rounded-full h-4 mx-4">
-                  <div className="bg-orange-400 h-4 rounded-full" style={{ width: '45%' }}></div>
+                  <div className="bg-orange-400 h-4 rounded-full" style={{ width: `${item.score}%` }}></div>
                 </div>
-                <span className="text-gray-700">45%</span>
+                <span className="text-gray-700">{item.score}%</span>
               </div>
             ))}
           </div>
@@ -68,15 +100,15 @@ const UserDashboard = () => {
 
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 bg-blue-600 p-4 shadow-lg flex justify-between items-center">
-        <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">LOGO</a>
+        <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">Bloomlet</a>
         <nav className="space-x-4">
           <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">Home</a>
           <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/userdashboard">Progress</a>
         </nav>
-        <div className="flex items-center">
-          <img src="https://via.placeholder.com/40" alt="User Icon" className="w-10 h-10 rounded-full mr-2" />
-          <span className="text-white">Amor Floriana</span>
-        </div>
+        <Link to="/profile" className="flex items-center">
+          <img src={userData.profilePicURL || "https://via.placeholder.com/40"} alt="User Icon" className="w-10 h-10 rounded-full mr-2" />
+          <span className="text-white">{userData.firstName} {userData.lastName}</span>
+        </Link>
       </div>
     </div>
   );

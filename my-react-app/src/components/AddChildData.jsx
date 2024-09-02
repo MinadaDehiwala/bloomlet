@@ -68,9 +68,12 @@ const AddChildData = () => {
     if (validate()) {
       try {
         const userId = Cookies.get('userID');
+        if (!userId) {
+          throw new Error("User ID not found in cookies.");
+        }
         const docRef = await addDoc(collection(db, 'childrenData'), {
           ...childData,
-          userId: userId
+          userId: userId // Ensure userId is added
         });
         Cookies.set('childID', docRef.id);
         console.log('Child data saved:', childData);
@@ -80,6 +83,7 @@ const AddChildData = () => {
       }
     }
   };
+  
 
   const apps = ['YouTube', 'TikTok', 'YouTube Kids', 'Netflix', 'Games', 'Educational Apps'];
   const platforms = ['TV', 'Computer', 'Tablet', 'Mobile'];

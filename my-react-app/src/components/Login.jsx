@@ -7,7 +7,7 @@ import Cookies from 'js-cookie';
 const Login = () => {
   const emailRef = useRef();
   const passwordRef = useRef();
-  const { login } = useAuth();  // Ensure login function is correctly imported
+  const { login } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +25,6 @@ const Login = () => {
       setLoading(true);
       const userCredential = await login(emailRef.current.value, passwordRef.current.value);
       const user = userCredential.user;
-      console.log('User object:', user);
       if (user && user.uid) {
         Cookies.set('userID', user.uid, { expires: 7 }); // Store userID in cookies for 7 days
         Swal.fire({
@@ -36,7 +35,7 @@ const Login = () => {
           showConfirmButton: false,
         });
         setTimeout(() => {
-          navigate('/addchilddata'); // Redirect to /addchilddata after login
+          navigate('/'); // Redirect to home after login
         }, 2000);
       } else {
         throw new Error('User ID not found in the response');

@@ -1,8 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../firebase';
+import { db, storage } from '../firebase'; // Import Firebase storage
 import { doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import Cookies from 'js-cookie'; // Import Cookies to set the userId
 
 const Signup = () => {
   const firstNameRef = useRef();
@@ -10,10 +12,10 @@ const Signup = () => {
   const emailRef = useRef();
   const passwordRef = useRef();
   const passwordConfirmRef = useRef();
+  const profilePicRef = useRef(); // Reference for the profile picture
   const { signup } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -34,18 +36,52 @@ const Signup = () => {
     try {
       setError('');
       setLoading(true);
+
+      // Create the user with email and password
       const userCredential = await signup(emailRef.current.value, passwordRef.current.value);
       const user = userCredential.user;
+
+      // Set the userId cookie
+      Cookies.set('userID', user.uid);
+
+      // Upload profile picture if selected
+      let profilePicURL = '';
+      if (profilePicRef.current.files[0]) {
+        const file = profilePicRef.current.files[0];
+        const storageRef = ref(storage, `profile_pictures/${user.uid}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        // Upload the profile picture and get the URL
+        await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              // Optional: Track upload progress here
+            },
+            (error) => {
+              console.error('Error uploading profile picture:', error);
+              reject(error);
+            },
+            async () => {
+              profilePicURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve();
+            }
+          );
+        });
+      }
 
       // Save user details to Firestore
       await setDoc(doc(db, 'users', user.uid), {
         firstName: firstNameRef.current.value,
         lastName: lastNameRef.current.value,
         email: emailRef.current.value,
+        profilePicURL, // Save the profile picture URL
       });
 
-      setShowPopup(true);
+      // Redirect to add child data page after signup
+      navigate('/addchilddata');
     } catch (error) {
+      console.error('Failed to create an account:', error);
       setError('Failed to create an account: ' + error.message);
     }
 
@@ -148,6 +184,21 @@ const Signup = () => {
             </div>
 
             <div>
+              <label htmlFor="profile-picture" className="block text-sm font-medium text-gray-700">
+                Profile Picture
+              </label>
+              <div className="mt-1">
+                <input
+                  id="profile-picture"
+                  name="profile-picture"
+                  type="file"
+                  ref={profilePicRef} // Ref for the profile picture
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white text-black"
+                />
+              </div>
+            </div>
+
+            <div>
               <button
                 type="submit"
                 disabled={loading}
@@ -178,28 +229,6 @@ const Signup = () => {
           </div>
         </div>
       </div>
-
-      {showPopup && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="my-modal">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Signup Successful</h3>
-              <div className="mt-2 px-7 py-3">
-                <p className="text-sm text-gray-500">Your account has been successfully created.</p>
-              </div>
-              <div className="items-center px-4 py-3">
-                <button
-                  id="ok-btn"
-                  className="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  onClick={() => navigate('/userdashboard')}
-                >
-                  Go to Dashboard
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

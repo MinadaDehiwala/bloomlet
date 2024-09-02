@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // <-- Make sure Link is imported here
+import { Link, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import childrenImage from '../assets/children.jpg';
-import { Button } from '@mui/material';
+import { Button, Modal, Box, Typography } from '@mui/material';
 
 const Home = () => {
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
-
+  
   const [childData, setChildData] = useState(null);
   const [intelligenceScore, setIntelligenceScore] = useState(null);
   const [userName, setUserName] = useState('');
+  const [profilePicURL, setProfilePicURL] = useState('https://via.placeholder.com/40');
+  const [open, setOpen] = useState(false); // Modal state
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -25,6 +27,9 @@ const Home = () => {
           if (userSnap.exists()) {
             const userData = userSnap.data();
             setUserName(`${userData.firstName} ${userData.lastName}`);
+            if (userData.profilePicURL) {
+              setProfilePicURL(userData.profilePicURL);
+            }
           } else {
             console.error('No user data found!');
           }
@@ -40,6 +45,7 @@ const Home = () => {
   useEffect(() => {
     const checkForChildID = async () => {
       const childID = Cookies.get('childID');
+      console.log('Retrieved childID from cookies:', childID);
 
       if (!childID) {
         navigate('/addchilddata');
@@ -51,8 +57,10 @@ const Home = () => {
         const childSnap = await getDoc(childRef);
 
         if (childSnap.exists()) {
-          setChildData(childSnap.data());
-          setIntelligenceScore(childSnap.data().score);
+          const data = childSnap.data();
+          console.log('Child data retrieved:', data);
+          setChildData(data);
+          setIntelligenceScore(data.score);
         } else {
           console.error(`No such document! childID: ${childID}`);
           Cookies.remove('childID');
@@ -85,23 +93,29 @@ const Home = () => {
   };
 
   const handleNavigateToImprove = () => {
-    navigate('/improve');
+    setOpen(true); // Open the modal when clicking "Improve"
+  };
+
+  const handleClose = () => {
+    setOpen(false); // Close the modal
   };
 
   return (
     <div className="bg-gray-100 min-h-screen w-full flex flex-col items-center">
-      <div className="topnav bg-blue-600 w-full flex justify-around p-4 shadow-lg">
-        <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">LOGO</a>
-        <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/userdashboard">Progress</a>
-        <button
-          onClick={handleLogout}
-          className="text-white text-lg hover:text-gray-200 transition duration-200 ml-auto"
-        >
-          Logout
-        </button>
+      {/* Top Navigation Bar */}
+      <div className="absolute top-0 left-0 right-0 bg-blue-600 p-4 shadow-lg flex justify-between items-center">
+        <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">Bloomlet</a>
+        <nav className="space-x-4">
+          <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/">Home</a>
+          <a className="text-white text-lg hover:text-gray-200 transition duration-200" href="/userdashboard">Progress</a>
+        </nav>
+        <Link to="/profile" className="flex items-center">
+          <img src={profilePicURL} alt="User Icon" className="w-10 h-10 rounded-full mr-2" />
+          <span className="text-white">{userName || 'Guest'}</span>
+        </Link>
       </div>
 
-      <div className="content flex-grow text-center p-5 w-full max-w-6xl mx-auto">
+      <div className="content flex-grow text-center p-5 w-full max-w-6xl mx-auto mt-20">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-4xl font-bold text-black">Make Your Dream</h1>
           <div className="text-xl text-gray-700">Hello, {userName || 'Guest'}</div>
@@ -215,8 +229,77 @@ const Home = () => {
           </div>
         )}
       </div>
+
+      {/* Improve Modal */}
+      <Modal
+        open={open}
+        onClose={handleClose}
+        aria-labelledby="modal-modal-title"
+        aria-describedby="modal-modal-description"
+      >
+        <Box sx={modalStyle}>
+          <Typography id="modal-modal-title" variant="h6" component="h2" sx={{ color: 'black' }}>
+            Personalized Improvement Plan
+          </Typography>
+          <Box id="modal-modal-description" sx={{ mt: 2 }}>
+            <Typography variant="body1" component="p" sx={{ color: 'black' }}>
+              Health & Nutrition: Your child's weight is considered {getWeightStatus(childData?.weight, childData?.age)}.
+              It's important to monitor their diet and ensure they receive proper nutrition.
+              Your child's height is considered {getHeightStatus(childData?.height, childData?.age)}.
+              Ensure a balanced diet and regular physical activity to support healthy growth.
+            </Typography>
+            <Typography variant="body1" component="p" sx={{ mt: 2, color: 'black' }}>
+              Screen Time: Your child's screen time is {childData?.avgDailyScreenTime} hours per day,
+              which is within the recommended limit of {getRecommendedScreenTime(childData?.age)} hours.
+            </Typography>
+            <Typography variant="body1" component="p" sx={{ mt: 2, color: 'black' }}>
+              Cognitive Development: Your child's intelligence score is {intelligenceScore}.
+            </Typography>
+          </Box>
+          <Button onClick={handleClose} sx={{ mt: 2 }} variant="contained" color="primary">
+            Close
+          </Button>
+        </Box>
+      </Modal>
     </div>
   );
+};
+
+// Modal style
+const modalStyle = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: 400,
+  bgcolor: 'background.paper',
+  boxShadow: 24,
+  p: 4,
+  borderRadius: 2
+};
+
+// Helper functions
+const getWeightStatus = (weight, age) => {
+  if (age === 5) {
+    if (weight < 15) return 'underweight';
+    if (weight > 25) return 'overweight';
+    return 'within the normal range';
+  }
+  return 'unknown';
+};
+
+const getHeightStatus = (height, age) => {
+  if (age === 5) {
+    if (height < 100) return 'below average';
+    if (height > 120) return 'above average';
+    return 'within the normal range';
+  }
+  return 'unknown';
+};
+
+const getRecommendedScreenTime = (age) => {
+  if (age === 5) return 1;
+  return 0;
 };
 
 export default Home;
