@@ -83,18 +83,18 @@ const Improve = () => {
       <MDBRow className="justify-content-center" ref={reportRef}>
         {recommendations.map((rec, index) => (
           <MDBCol md="8" key={index} className="mb-4">
-            <MDBCard className="shadow-3 border rounded-3">
-              <MDBCardHeader className="bg-primary text-white">
+            <MDBCard className="shadow-3 border rounded-3" style={{ backgroundColor: '#f9f9f9', borderRadius: '10px' }}>
+              <MDBCardHeader className="bg-gradient" style={{ background: 'linear-gradient(90deg, #0062E6 0%, #33AEFF 100%)', color: '#fff', fontWeight: 'bold', fontSize: '1.2rem' }}>
                 <MDBIcon fas icon={rec.icon} className="me-3" />
                 {rec.title}
               </MDBCardHeader>
-              <MDBCardBody>
-                <MDBCardTitle className="text-center">{rec.title}</MDBCardTitle>
-                <MDBCardText style={{ color: '#555', fontSize: '1.1rem', lineHeight: '1.5' }}>
+              <MDBCardBody style={{ padding: '2rem' }}>
+                <MDBCardTitle className="text-center" style={{ color: '#444', fontWeight: 'bold', marginBottom: '1rem' }}>{rec.title}</MDBCardTitle>
+                <MDBCardText style={{ color: '#555', fontSize: '1.1rem', lineHeight: '1.75' }}>
                   {rec.text}
                 </MDBCardText>
               </MDBCardBody>
-              <MDBCardFooter className="text-muted">
+              <MDBCardFooter className="text-muted" style={{ padding: '1rem', textAlign: 'right' }}>
                 {rec.footer}
               </MDBCardFooter>
             </MDBCard>
@@ -103,7 +103,7 @@ const Improve = () => {
       </MDBRow>
       <MDBRow className="justify-content-center mt-4">
         <MDBCol md="8" className="text-center">
-          <MDBBtn onClick={handleDownloadReport} color="primary" size="lg" className="shadow-lg">
+          <MDBBtn onClick={handleDownloadReport} color="primary" size="lg" className="shadow-lg" style={{ borderRadius: '25px', padding: '10px 30px', fontSize: '1.2rem', fontWeight: 'bold' }}>
             <MDBIcon fas icon="download" className="me-2" /> Download Report
           </MDBBtn>
         </MDBCol>

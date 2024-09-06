@@ -68,9 +68,12 @@ const AddChildData = () => {
     if (validate()) {
       try {
         const userId = Cookies.get('userID');
+        if (!userId) {
+          throw new Error("User ID not found in cookies.");
+        }
         const docRef = await addDoc(collection(db, 'childrenData'), {
           ...childData,
-          userId: userId
+          userId: userId // Ensure userId is added
         });
         Cookies.set('childID', docRef.id);
         console.log('Child data saved:', childData);
@@ -85,7 +88,19 @@ const AddChildData = () => {
   const platforms = ['TV', 'Computer', 'Tablet', 'Mobile'];
 
   if (childExists) {
-    return <div>You already have a child added.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+        <h1 className="text-4xl font-bold text-center text-red-600 mb-8">
+          You already have a child added.
+        </h1>
+        <button
+          onClick={() => navigate('/')}
+          className="bg-blue-500 text-white py-3 px-6 rounded shadow-md hover:bg-blue-600 transition duration-200"
+        >
+          Go to Home
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -124,7 +139,7 @@ const AddChildData = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded bg-white text-black"
           />
-          {errors.weight && <span class="text-red-500">{errors.weight}</span>}
+          {errors.weight && <span className="text-red-500">{errors.weight}</span>}
         </div>
         <div className="mb-4">
           <label className="block text-gray-700">Height (cm)</label>
@@ -135,7 +150,7 @@ const AddChildData = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded bg-white text-black"
           />
-          {errors.height && <span class="text-red-500">{errors.height}</span>}
+          {errors.height && <span className="text-red-500">{errors.height}</span>}
         </div>
         <div className="mb-4">
           <label className="block text-gray-700">Average Daily Screen Time (hours)</label>
@@ -146,7 +161,7 @@ const AddChildData = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded bg-white text-black"
           />
-          {errors.avgDailyScreenTime && <span class="text-red-500">{errors.avgDailyScreenTime}</span>}
+          {errors.avgDailyScreenTime && <span className="text-red-500">{errors.avgDailyScreenTime}</span>}
         </div>
         <div className="mb-4">
           <label className="block text-gray-700 mb-2">Apps Used</label>

@@ -2,57 +2,112 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import Confetti from 'react-confetti';
+import Confetti from 'react-confetti'; // Import Confetti
 import { Container, Box, Typography, Button, Grid, Paper } from '@mui/material';
 import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import Cookies from 'js-cookie';
 import ballImage from '../assets/ball.png';
 import appleImage from '../assets/apple.png';
 import bananaImage from '../assets/banana.png';
+import { useAuth } from '../contexts/AuthContext';
 
 const MySwal = withReactContent(Swal);
 
 const levels = [
   {
+    type: 'counting',
     images: [ballImage, ballImage, ballImage],
     options: [2, 3, 4, 5, 6],
     correct: 3,
   },
   {
+    type: 'counting',
     images: [appleImage, appleImage],
     options: [1, 2, 3, 4, 5],
     correct: 2,
   },
   {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Red', 'Blue', 'Green', 'Yellow', 'Purple'],
+    correct: 'Blue',
+    displayColor: 'blue',
+  },
+  {
+    type: 'counting',
     images: [bananaImage, bananaImage, bananaImage, bananaImage],
     options: [3, 4, 5, 6, 7],
     correct: 4,
   },
   {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Orange', 'Pink', 'Purple', 'Blue', 'Red'],
+    correct: 'Orange',
+    displayColor: 'orange',
+  },
+  {
+    type: 'counting',
     images: [ballImage, ballImage, ballImage, ballImage, ballImage],
     options: [4, 5, 6, 7, 8],
     correct: 5,
   },
   {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Black', 'White', 'Gray', 'Blue', 'Green'],
+    correct: 'Green',
+    displayColor: 'green',
+  },
+  {
+    type: 'counting',
     images: [appleImage, appleImage, appleImage],
     options: [2, 3, 4, 5, 6],
     correct: 3,
+  },
+  {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Yellow', 'Blue', 'Red', 'Green', 'Purple'],
+    correct: 'Red',
+    displayColor: 'red',
+  },
+  {
+    type: 'counting',
+    images: [bananaImage, bananaImage],
+    options: [1, 2, 3, 4, 5],
+    correct: 2,
+  },
+  {
+    type: 'counting',
+    images: [appleImage, appleImage, appleImage, appleImage],
+    options: [2, 3, 4, 5, 6],
+    correct: 4,
   },
 ];
 
 const Game2 = () => {
   const [currentLevel, setCurrentLevel] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [correctCountingAnswers, setCorrectCountingAnswers] = useState(0);
+  const [correctColorAnswers, setCorrectColorAnswers] = useState(0);
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
 
-  const childId = Cookies.get('childID');  // Assume childID is stored in cookies
+  const childId = Cookies.get('childID');
 
   const checkAnswer = (answer) => {
-    if (answer === levels[currentLevel].correct) {
+    const currentQuestion = levels[currentLevel];
+
+    if (answer === currentQuestion.correct) {
       setShowConfetti(true);
-      setCorrectAnswers(correctAnswers + 1);
+      if (currentQuestion.type === 'counting') {
+        setCorrectCountingAnswers(correctCountingAnswers + 1);
+      } else if (currentQuestion.type === 'color') {
+        setCorrectColorAnswers(correctColorAnswers + 1);
+      }
+
       MySwal.fire({
         title: 'Correct!',
         text: 'You chose the right answer!',
@@ -63,9 +118,7 @@ const Game2 = () => {
         if (currentLevel < levels.length - 1) {
           setCurrentLevel(currentLevel + 1);
         } else {
-          const totalQuestions = levels.length;
-          const percentage = (correctAnswers / totalQuestions) * 100;
-          updateChildScoreAndIntelligence(childId, percentage);
+          calculateAndSaveScore();
         }
       });
     } else {
@@ -78,32 +131,41 @@ const Game2 = () => {
         if (currentLevel < levels.length - 1) {
           setCurrentLevel(currentLevel + 1);
         } else {
-          const totalQuestions = levels.length;
-          const percentage = (correctAnswers / totalQuestions) * 100;
-          updateChildScoreAndIntelligence(childId, percentage);
+          calculateAndSaveScore();
         }
       });
     }
   };
 
+  const calculateAndSaveScore = () => {
+    const totalQuestions = levels.length;
+    const totalCorrect = correctCountingAnswers + correctColorAnswers;
+    const percentage = (totalCorrect / totalQuestions) * 100;
+
+    updateChildScoreAndIntelligence(childId, percentage);
+    saveGameHistory(percentage);
+  };
+
   const updateChildScoreAndIntelligence = async (childId, percentage) => {
     try {
-      const intelligenceScore = calculateIntelligenceScore(percentage);
+      const countingScore = (correctCountingAnswers / 6) * 100;
+      const colorIdentificationScore = (correctColorAnswers / 5) * 100;
 
       const childRef = doc(db, 'childrenData', childId);
 
-      // Use setDoc with merge: true to create or update the document
       await setDoc(childRef, {
-        score: percentage,
-        intelligence: intelligenceScore,
+        score: percentage, // Update the 'score' field
+        countingScore: countingScore,
+        colorIdentificationScore: colorIdentificationScore,
       }, { merge: true });
 
       MySwal.fire({
         title: 'Game Over!',
-        text: `Your intelligence percentage is ${intelligenceScore.toFixed(2)}%`,
+        text: `Your total score is ${percentage.toFixed(2)}%`,
         icon: 'success',
         confirmButtonText: 'Okay',
       }).then(() => {
+        resetGame();
         navigate('/');
       });
     } catch (error) {
@@ -111,8 +173,24 @@ const Game2 = () => {
     }
   };
 
-  const calculateIntelligenceScore = (percentage) => {
-    return percentage; // Adjust this to be more sophisticated if required
+  const saveGameHistory = async (score) => {
+    try {
+      await addDoc(collection(db, 'gameHistory'), {
+        userID: currentUser.uid,
+        gameType: 'Game 2',
+        score: Math.round(score), // Save the score rounded to the nearest whole number
+        datePlayed: serverTimestamp(),
+      });
+      console.log('Game history saved successfully');
+    } catch (error) {
+      console.error('Error saving game history:', error);
+    }
+  };
+
+  const resetGame = () => {
+    setCurrentLevel(0);
+    setCorrectCountingAnswers(0);
+    setCorrectColorAnswers(0);
   };
 
   return (
@@ -140,7 +218,7 @@ const Game2 = () => {
           marginBottom: '20px'
         }}
       >
-        Count the Images
+        {levels[currentLevel].type === 'counting' ? 'Count the Images' : 'Identify the Color'}
       </Typography>
       <Paper 
         elevation={6} 
@@ -162,18 +240,29 @@ const Game2 = () => {
             gap: '10px'
           }}
         >
-          {levels[currentLevel].images.map((image, index) => (
-            <img 
-              key={index}
-              src={image} 
-              alt="Count" 
-              style={{ 
-                width: 100, 
-                height: 100, 
-                objectFit: 'contain'
-              }} 
+          {levels[currentLevel].type === 'counting' ? (
+            levels[currentLevel].images.map((image, index) => (
+              <img 
+                key={index}
+                src={image} 
+                alt="Count" 
+                style={{ 
+                  width: 100, 
+                  height: 100, 
+                  objectFit: 'contain'
+                }} 
+              />
+            ))
+          ) : (
+            <Box
+              sx={{
+                width: '100px',
+                height: '100px',
+                backgroundColor: levels[currentLevel].displayColor,
+                borderRadius: '50%',
+              }}
             />
-          ))}
+          )}
         </Box>
         <Grid container spacing={2}>
           {levels[currentLevel].options.map((option) => (

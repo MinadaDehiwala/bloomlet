@@ -5,38 +5,78 @@ import withReactContent from 'sweetalert2-react-content';
 import Confetti from 'react-confetti';
 import { Container, Box, Typography, Button, Grid, Paper } from '@mui/material';
 import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import Cookies from 'js-cookie';
 import AddIcon from '@mui/icons-material/Add';
 import QuestionMarkIcon from '@mui/icons-material/HelpOutline';
+import { useAuth } from '../contexts/AuthContext';
 
 const MySwal = withReactContent(Swal);
 
 const levels = [
   {
+    type: 'math',
     question: [5, 5],
     options: [8, 9, 10, 11, 12],
     correct: 10,
   },
   {
+    type: 'math',
     question: [3, 4, 2],
     options: [8, 9, 7, 10, 6],
     correct: 9,
   },
   {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Red', 'Blue', 'Green', 'Yellow', 'Purple'],
+    correct: 'Blue',
+    displayColor: 'blue',
+  },
+  {
+    type: 'math',
     question: [7, 2, 1],
     options: [11, 12, 10, 9, 8],
     correct: 10,
   },
   {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Orange', 'Pink', 'Purple', 'Blue', 'Red'],
+    correct: 'Orange',
+    displayColor: 'orange',
+  },
+  {
+    type: 'math',
     question: [6, 3],
     options: [9, 8, 7, 10, 11],
     correct: 9,
   },
   {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Black', 'White', 'Gray', 'Blue', 'Green'],
+    correct: 'Green',
+    displayColor: 'green',
+  },
+  {
+    type: 'math',
     question: [2, 3, 5],
     options: [8, 10, 9, 7, 6],
     correct: 10,
+  },
+  {
+    type: 'color',
+    question: ['Which color is this?'],
+    options: ['Yellow', 'Blue', 'Red', 'Green', 'Purple'],
+    correct: 'Red',
+    displayColor: 'red',
+  },
+  {
+    type: 'math',
+    question: [4, 4],
+    options: [7, 8, 9, 10, 12],
+    correct: 8,
   },
 ];
 
@@ -45,13 +85,17 @@ const Game3 = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
 
-  const childId = Cookies.get('childID');  // Assume childID is stored in cookies
+  const childId = Cookies.get('childID');
 
   const checkAnswer = (answer) => {
-    if (answer === levels[currentLevel].correct) {
+    const currentQuestion = levels[currentLevel];
+
+    if (answer === currentQuestion.correct) {
       setShowConfetti(true);
       setCorrectAnswers(correctAnswers + 1);
+
       MySwal.fire({
         title: 'Correct!',
         text: 'You chose the right answer!',
@@ -62,9 +106,7 @@ const Game3 = () => {
         if (currentLevel < levels.length - 1) {
           setCurrentLevel(currentLevel + 1);
         } else {
-          const totalQuestions = levels.length;
-          const percentage = (correctAnswers / totalQuestions) * 100;
-          updateChildScoreAndIntelligence(childId, percentage);
+          calculateAndSaveScore();
         }
       });
     } else {
@@ -77,32 +119,35 @@ const Game3 = () => {
         if (currentLevel < levels.length - 1) {
           setCurrentLevel(currentLevel + 1);
         } else {
-          const totalQuestions = levels.length;
-          const percentage = (correctAnswers / totalQuestions) * 100;
-          updateChildScoreAndIntelligence(childId, percentage);
+          calculateAndSaveScore();
         }
       });
     }
   };
 
+  const calculateAndSaveScore = () => {
+    const totalQuestions = levels.length;
+    const percentage = (correctAnswers / totalQuestions) * 100;
+
+    updateChildScoreAndIntelligence(childId, percentage);
+    saveGameHistory(percentage);
+  };
+
   const updateChildScoreAndIntelligence = async (childId, percentage) => {
     try {
-      const intelligenceScore = calculateIntelligenceScore(percentage);
-
       const childRef = doc(db, 'childrenData', childId);
 
-      // Use setDoc with merge: true to create or update the document
       await setDoc(childRef, {
-        score: percentage,
-        intelligence: intelligenceScore,
+        score: percentage, // Update the 'score' field with the new value
       }, { merge: true });
 
       MySwal.fire({
         title: 'Game Over!',
-        text: `Your intelligence percentage is ${intelligenceScore.toFixed(2)}%`,
+        text: `Your total score is ${percentage.toFixed(2)}%`,
         icon: 'success',
         confirmButtonText: 'Okay',
       }).then(() => {
+        resetGame();
         navigate('/');
       });
     } catch (error) {
@@ -110,8 +155,23 @@ const Game3 = () => {
     }
   };
 
-  const calculateIntelligenceScore = (percentage) => {
-    return percentage; // Adjust this to be more sophisticated if required
+  const saveGameHistory = async (score) => {
+    try {
+      await addDoc(collection(db, 'gameHistory'), {
+        userID: currentUser.uid,
+        gameType: 'Game 3',
+        score: Math.round(score), // Save the score rounded to the nearest whole number
+        datePlayed: serverTimestamp(),
+      });
+      console.log('Game history saved successfully');
+    } catch (error) {
+      console.error('Error saving game history:', error);
+    }
+  };
+
+  const resetGame = () => {
+    setCurrentLevel(0);
+    setCorrectAnswers(0);
   };
 
   return (
@@ -139,7 +199,7 @@ const Game3 = () => {
           marginBottom: '20px'
         }}
       >
-        Solve the Math Question
+        {levels[currentLevel].type === 'math' ? 'Solve the Math Question' : 'Identify the Color'}
       </Typography>
       <Paper 
         elevation={6} 
@@ -162,13 +222,26 @@ const Game3 = () => {
             fontWeight: 'bold'
           }}
         >
-          {levels[currentLevel].question.map((num, index) => (
-            <React.Fragment key={index}>
-              {index > 0 && <AddIcon sx={{ fontSize: '2rem', marginX: '10px' }} />}
-              {num}
-            </React.Fragment>
-          ))}
-          <QuestionMarkIcon sx={{ fontSize: '2rem', marginLeft: '10px' }} />
+          {levels[currentLevel].type === 'math' ? (
+            levels[currentLevel].question.map((num, index) => (
+              <React.Fragment key={index}>
+                {index > 0 && <AddIcon sx={{ fontSize: '2rem', marginX: '10px' }} />}
+                {num}
+              </React.Fragment>
+            ))
+          ) : (
+            <Box
+              sx={{
+                width: '100px',
+                height: '100px',
+                backgroundColor: levels[currentLevel].displayColor,
+                borderRadius: '50%',
+              }}
+            />
+          )}
+          {levels[currentLevel].type === 'math' && (
+            <QuestionMarkIcon sx={{ fontSize: '2rem', marginLeft: '10px' }} />
+          )}
         </Box>
         <Grid container spacing={2}>
           {levels[currentLevel].options.map((option) => (
